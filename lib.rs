@@ -82,18 +82,27 @@ mod encode {
 
         /// This message returns all the candidates in the election
         #[ink(message)]
-        pub fn fetch_candidates(&self, hash: Vec<u8>) -> Vec<Candidate> {
+        pub fn fetch_candidates(&self, hash: Vec<u8>) -> Vec<u8> {
+            let mut collator = Vec::<u8>::new();
             if let Some(entry) = self.entries.get(&hash) {
-                entry.candidates
+                // we are going to fill up the collator byte by byte
+                // and use distinguishing separators
+                let _ = entry
+                    .candidates
+                    .iter()
+                    .map(|c| {
+                        collator.extend(c.name.iter());
+                        collator.extend([b'%', b'%']);
+                        collator.extend(c.party.iter());
+                        collator.extend([b'%', b'%']);
+                        collator.extend(c.image_uri.iter());
+                        collator.extend([b'&', b'&']); // floor separator
+                    })
+                    .collect::<()>();
+                collator
             } else {
                 Default::default()
             }
-        }
-
-        /// This message returns all the candidates in the election
-        #[ink(message)]
-        pub fn winner(&self) -> u64 {
-            34
         }
 
         /// This message returns the time the election ends
@@ -107,21 +116,21 @@ mod encode {
         }
     }
 
-     #[cfg(test)]
+    #[cfg(test)]
     mod tests {
         use super::*;
 
         #[ink::test]
         fn new() {
             let mut e = Encode {
-                entries: Default::default()
+                entries: Default::default(),
             };
 
             let hash = "0xhjhs8s0d0sdsd8s0d90shcs09".as_bytes().to_vec();
             let parties = "Republican".as_bytes().to_vec();
             let names = "Donald Trump".as_bytes().to_vec();
             let cids = "".as_bytes().to_vec();
-            let time = 38239299;
+            let time = 9498283920;
 
             e.commence(hash.clone(), names, parties, cids, time);
             assert_eq!(e.fetch_time(hash), time);
