@@ -3,7 +3,9 @@
 #[ink::contract]
 mod encode {
     use ink::storage::Mapping;
+    use ink::blake2x256;
     use scale_info::prelude::vec::Vec;
+    use scale_info::prelude::string::String;
 
     #[derive(scale::Decode, scale::Encode, Default)]
     #[cfg_attr(
@@ -11,9 +13,9 @@ mod encode {
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
     pub struct Candidate {
+        hash: [u8; 32],
         name: Vec<u8>,
         party: Vec<u8>,
-        image_uri: Vec<u8>,
         votes: u64,
     }
 
@@ -30,12 +32,12 @@ mod encode {
     #[ink(storage)]
     pub struct Encode {
         /// stores the election entries
-        entries: Mapping<Vec<u8>, Entry>,
+        entries: Mapping<[u8; 32], Entry>,
     }
 
     impl Encode {
         /// Constructor that initializes the contract storage
-        #[ink(constructor)]
+        #[ink(constructor, payable)]
         pub fn new() -> Self {
             Self {
                 entries: Default::default(),
@@ -43,13 +45,12 @@ mod encode {
         }
 
         /// This message intitiliazes an election and sets the countdown
-        #[ink(message)]
+        #[ink(message, payable)]
         pub fn commence(
             &mut self,
-            hash: Vec<u8>,
+            hash: [u8; 32],
             names: Vec<u8>,
             parties: Vec<u8>,
-            cids: Vec<u8>,
             time_frame: u64,
         ) {
             // set up each candidate
@@ -61,15 +62,14 @@ mod encode {
             };
 
             let mut parties = parties.split(|&c| c == b',');
-            let mut cids = cids.split(|&c| c == b',');
-
             let _ = names
                 .split(|&c| c == b',')
                 .map(|n| {
+                    let val = String::from_utf8_lossy(n);
                     let candidate = Candidate {
+                        hash: blake2x256!(&val),
                         name: n.to_vec(),
                         party: parties.next().unwrap_or_default().to_vec(),
-                        image_uri: cids.next().unwrap_or_default().to_vec(),
                         votes: 0,
                     };
 
@@ -81,8 +81,8 @@ mod encode {
         }
 
         /// This message returns all the candidates in the election
-        #[ink(message)]
-        pub fn fetch_candidates(&self, hash: Vec<u8>) -> Vec<u8> {
+        #[ink(message, payable)]
+        pub fn fetch_candidates(&self, hash: [u8; 32]) -> Vec<u8> {
             let mut collator = Vec::<u8>::new();
             if let Some(entry) = self.entries.get(&hash) {
                 // we are going to fill up the collator byte by byte
@@ -94,8 +94,6 @@ mod encode {
                         collator.extend(c.name.iter());
                         collator.extend([b'%', b'%']);
                         collator.extend(c.party.iter());
-                        collator.extend([b'%', b'%']);
-                        collator.extend(c.image_uri.iter());
                         collator.extend([b'&', b'&']); // floor separator
                     })
                     .collect::<()>();
@@ -106,8 +104,8 @@ mod encode {
         }
 
         /// This message returns the time the election ends
-        #[ink(message)]
-        pub fn fetch_time(&self, hash: Vec<u8>) -> u64 {
+        #[ink(message, payable)]
+        pub fn fetch_time(&self, hash: [u8; 32]) -> u64 {
             if let Some(entry) = self.entries.get(&hash) {
                 entry.time_frame
             } else {
@@ -126,13 +124,12 @@ mod encode {
                 entries: Default::default(),
             };
 
-            let hash = "0xhjhs8s0d0sdsd8s0d90shcs09".as_bytes().to_vec();
+            let hash: [u8; 32] = Default::default();
             let parties = "Republican".as_bytes().to_vec();
             let names = "Donald Trump".as_bytes().to_vec();
-            let cids = "".as_bytes().to_vec();
             let time = 9498283920;
 
-            e.commence(hash.clone(), names, parties, cids, time);
+            e.commence(hash.clone(), names, parties, time);
             assert_eq!(e.fetch_time(hash), time);
         }
     }
