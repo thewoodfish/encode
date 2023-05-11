@@ -3,9 +3,7 @@
 #[ink::contract]
 mod encode {
     use ink::storage::Mapping;
-    use ink::blake2x256;
     use scale_info::prelude::vec::Vec;
-    use scale_info::prelude::string::String;
 
     #[derive(scale::Decode, scale::Encode, Default)]
     #[cfg_attr(
@@ -51,6 +49,7 @@ mod encode {
             hash: [u8; 32],
             names: Vec<u8>,
             parties: Vec<u8>,
+            blake_hashes: Vec<u8>,
             time_frame: u64,
         ) {
             // set up each candidate
@@ -62,12 +61,13 @@ mod encode {
             };
 
             let mut parties = parties.split(|&c| c == b',');
+            let mut bl_hashes = blake_hashes.split(|&c| c == b',');
+
             let _ = names
                 .split(|&c| c == b',')
                 .map(|n| {
-                    let val = String::from_utf8_lossy(n);
                     let candidate = Candidate {
-                        hash: blake2x256!(&val),
+                        hash: bl_hashes.next().unwrap_or_default().try_into().unwrap_or_default(),
                         name: n.to_vec(),
                         party: parties.next().unwrap_or_default().to_vec(),
                         votes: 0,
