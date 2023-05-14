@@ -23,6 +23,7 @@ mod encode {
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
     struct Entry {
+        name: Vec<u8>,
         time_frame: u64,
         candidates: Vec<Candidate>,
         bvns: Vec<Vec<u8>>,
@@ -52,11 +53,13 @@ mod encode {
             parties: Vec<u8>,
             blake_hashes: Vec<u8>,
             time_frame: u64,
+            election_name: Vec<u8>,
         ) {
             // set up each candidate
 
             // set up the entry
             let mut entry = Entry {
+                name: election_name,
                 time_frame,
                 candidates: Default::default(),
                 bvns: Default::default(),
@@ -101,6 +104,10 @@ mod encode {
                         collator.extend([b'&', b'&']); // floor separator
                     })
                     .collect::<()>();
+
+                // we'll be needing the name of the election, so we have to add it to what we'll return implicitly
+                collator.extend([b'*', b'*', b'*']);    // our separator
+                collator.extend(entry.name.iter());
                 collator
             } else {
                 Default::default()
