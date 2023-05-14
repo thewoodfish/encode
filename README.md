@@ -16,7 +16,7 @@ This blockchain node is important as it runs the Elect-"0"-Rate contratct which 
 One major feature to be added is emitting of events by the contract.
 
 ### Final
-So all in all, in the nearest future, when you find yourself voting for your next leader through Elect-"0"-Rate or it's derivatives, just smile and say to yourself "I AM SAFE, I AM HEARD". Then go home, have a nice dinner and go to bed knowing that no magic can tamper with the election.
+So all in all, in the nearest future, when you find yourself voting for your next leader through Elect-"0"-Rate or it's derivatives, just smile and say to yourself "I AM SAFE, I AM HEARD". Then go home, have a nice dinner and go to bed knowing that no magic can tamper with the election voting process.
 
 Thank you for your time, God bless you! ❤️
 
