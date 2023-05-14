@@ -11,7 +11,7 @@ mod encode {
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
     pub struct Candidate {
-        hash: [u8; 32],
+        hash: Vec<u8>,
         name: Vec<u8>,
         party: Vec<u8>,
         votes: u64,
@@ -25,6 +25,7 @@ mod encode {
     struct Entry {
         time_frame: u64,
         candidates: Vec<Candidate>,
+        bvns: Vec<Vec<u8>>,
     }
 
     #[ink(storage)]
@@ -58,6 +59,7 @@ mod encode {
             let mut entry = Entry {
                 time_frame,
                 candidates: Default::default(),
+                bvns: Default::default(),
             };
 
             let mut parties = parties.split(|&c| c == b',');
@@ -67,10 +69,10 @@ mod encode {
                 .split(|&c| c == b',')
                 .map(|n| {
                     let candidate = Candidate {
-                        hash: bl_hashes.next().unwrap_or_default().try_into().unwrap_or_default(),
+                        hash: bl_hashes.next().unwrap_or_default().to_vec(),
                         name: n.to_vec(),
                         party: parties.next().unwrap_or_default().to_vec(),
-                        votes: 0,
+                        votes: 1, // because of JS parsing
                     };
 
                     entry.candidates.push(candidate);
@@ -94,6 +96,8 @@ mod encode {
                         collator.extend(c.name.iter());
                         collator.extend([b'%', b'%']);
                         collator.extend(c.party.iter());
+                        collator.extend([b'%', b'%']);
+                        collator.extend(c.hash.iter());
                         collator.extend([b'&', b'&']); // floor separator
                     })
                     .collect::<()>();
@@ -112,25 +116,52 @@ mod encode {
                 Default::default()
             }
         }
-    }
 
-    #[cfg(test)]
-    mod tests {
-        use super::*;
+        // This message checks if the BVN is unique
+        #[ink(message, payable)]
+        pub fn bvn_isunique(&self, hash: [u8; 32], bvn: Vec<u8>) -> bool {
+            if let Some(entry) = self.entries.get(&hash) {
+                entry.bvns.contains(&bvn)
+            } else {
+                false
+            }
+        }
 
-        #[ink::test]
-        fn new() {
-            let mut e = Encode {
-                entries: Default::default(),
-            };
+        // This message return the votes of the candidates
+        #[ink(message, payable)]
+        pub fn get_votes(&self, hash: [u8; 32]) -> Vec<u8> {
+            if let Some(entry) = self.entries.get(&hash) {
+                entry
+                    .candidates
+                    .iter()
+                    .map(|c| c.votes.to_le_bytes())
+                    .flatten()
+                    .collect()
+            } else {
+                Default::default()
+            }
+        }
 
-            let hash: [u8; 32] = Default::default();
-            let parties = "Republican".as_bytes().to_vec();
-            let names = "Donald Trump".as_bytes().to_vec();
-            let time = 9498283920;
-
-            e.commence(hash.clone(), names, parties, time);
-            assert_eq!(e.fetch_time(hash), time);
+        /// This is the message that casts the vote on a voters behalf
+        #[ink(message, payable)]
+        pub fn cast_vote(&mut self, hash: [u8; 32], uniq_str: Vec<u8>, bvn: Vec<u8>) {
+            let mut entry: Entry = Default::default();
+            if let Some(e) = self.entries.get(&hash) {
+                // make sure the user isn't voting more than once per BVN
+                entry = e;
+                if !entry.bvns.contains(&bvn) {
+                    // increase vote count
+                    for c in &mut entry.candidates {
+                        if c.hash == uniq_str {
+                            c.votes += 1;
+                            break;
+                        }
+                    }
+                    // store BVN for future purposes
+                    entry.bvns.push(bvn);
+                }
+            }
+            self.entries.insert(hash, &entry);
         }
     }
 }
