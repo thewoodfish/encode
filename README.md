@@ -6,4 +6,4 @@
   It is built with <a href="https://use.ink">ink!</a> - a rust eDSL for writing smart contracts.
 </div>
                                                                                        
-
+It is my submission to the Polkadot X Encode Hackathon.
