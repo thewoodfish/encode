@@ -5,7 +5,7 @@
   It is built with <a href="https://use.ink">ink!</a> - a rust eDSL for writing smart contracts.
 
 # Elect-"0"-Rate Contract Node
-This blockchain node is important as it runs the Elect-"0"-Rate contratct ehich manages all the election process transparently and securely. It records the election entry, votes, caches voters BVNs and provides critical information when queried etc. 
+This blockchain node is important as it runs the Elect-"0"-Rate contratct which manages all the election process transparently and securely. It records the election entry, votes, caches voters BVNs etc and provides critical information when queried.
 
 ## Running a local Elect-"0"-Rate contract node 
 - Check out the guidelines to setup a local contracts node <a href="https://use.ink/getting-started/setup">here</a>.
